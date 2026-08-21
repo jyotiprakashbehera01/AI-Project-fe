@@ -8,6 +8,7 @@ import SuccessMessage from '../components/Common/SuccessMessage';
 import ErrorMessage from '../components/Common/ErrorMessage';
 import EmptyState from '../components/Common/EmptyState';
 import { FolderKanban } from 'lucide-react';
+import { getApiErrorMessage } from '../services/api';
 
 export default function ProjectsPage() {
   const { projects, tasks, addProject, updateProject, removeProject } = useData();
@@ -27,19 +28,19 @@ export default function ProjectsPage() {
     setFormOpen(true);
   }
 
-  function handleSave(data) {
+  async function handleSave(data) {
     try {
       if (editing) {
-        updateProject(editing.id, data);
+        await updateProject(editing.id, data);
         setSuccess('Project updated successfully.');
       } else {
-        addProject(data);
+        await addProject(data);
         setSuccess('Project created successfully.');
       }
       setFormOpen(false);
       setEditing(null);
-    } catch {
-      setError('Project could not be saved. Please try again.');
+    } catch (saveError) {
+      setError(getApiErrorMessage(saveError, 'Project could not be saved.'));
     }
   }
 
@@ -48,8 +49,8 @@ export default function ProjectsPage() {
     try {
       removeProject(deleting.id);
       setSuccess('Project deleted successfully.');
-    } catch {
-      setError('Project could not be deleted. Please try again.');
+    } catch (deleteError) {
+      setError(getApiErrorMessage(deleteError, 'Project could not be deleted.'));
     } finally {
       setDeleting(null);
     }

@@ -26,6 +26,62 @@ const apiClient = axios.create({
 export const useMockData =
   String(import.meta.env.VITE_USE_MOCK_DATA ?? 'true').toLowerCase() !== 'false';
 
+export function getApiErrorMessage(error, fallback) {
+  if (!error?.response) {
+    return `${fallback} Backend is not reachable. Start the FastAPI server and try again.`;
+  }
+
+  const detail = error.response.data?.detail;
+  return detail ? `${fallback} ${detail}` : `${fallback} Request failed (${error.response.status}).`;
+}
+
+function toProjectRequest(projectData) {
+  return {
+    project_name: projectData.name,
+    description: projectData.description,
+    technology_stack: Array.isArray(projectData.techStack)
+      ? projectData.techStack.join(', ')
+      : projectData.techStack,
+  };
+}
+
+function toProject(projectData) {
+  return {
+    id: projectData.project_id,
+    name: projectData.project_name,
+    description: projectData.description,
+    techStack: typeof projectData.technology_stack === 'string'
+      ? projectData.technology_stack.split(',').map((item) => item.trim()).filter(Boolean)
+      : [],
+    createdAt: projectData.created_at,
+  };
+}
+
+function toTaskRequest(taskData) {
+  return {
+    project_id: taskData.projectId,
+    title: taskData.title,
+    description: taskData.description,
+    priority: taskData.priority,
+    status: taskData.status,
+    ai_generated: taskData.aiGenerated ?? false,
+  };
+}
+
+function toTask(taskData) {
+  return {
+    id: taskData.task_id,
+    projectId: taskData.project_id,
+    title: taskData.title,
+    description: taskData.description,
+    priority: taskData.priority,
+    status: taskData.status,
+    aiGenerated: taskData.ai_generated,
+    createdAt: taskData.created_at,
+    updatedAt: taskData.updated_at,
+  };
+}
+
 // ---- Health ----
 export async function checkBackendHealth() {
   const response = await apiClient.get('/api/health');
@@ -41,22 +97,22 @@ export async function getDashboardStatistics() {
 // ---- Projects ----
 export async function getProjects() {
   const response = await apiClient.get('/api/projects');
-  return response.data;
+  return response.data.map(toProject);
 }
 
 export async function getProjectById(projectId) {
   const response = await apiClient.get(`/api/projects/${projectId}`);
-  return response.data;
+  return toProject(response.data);
 }
 
 export async function createProject(projectData) {
-  const response = await apiClient.post('/api/projects', projectData);
-  return response.data;
+  const response = await apiClient.post('/api/projects', toProjectRequest(projectData));
+  return toProject(response.data);
 }
 
 export async function updateProject(projectId, projectData) {
-  const response = await apiClient.put(`/api/projects/${projectId}`, projectData);
-  return response.data;
+  const response = await apiClient.put(`/api/projects/${projectId}`, toProjectRequest(projectData));
+  return toProject(response.data);
 }
 
 export async function deleteProject(projectId) {
@@ -67,22 +123,22 @@ export async function deleteProject(projectId) {
 // ---- Tasks ----
 export async function getTasks() {
   const response = await apiClient.get('/api/tasks');
-  return response.data;
+  return response.data.map(toTask);
 }
 
 export async function createTask(taskData) {
-  const response = await apiClient.post('/api/tasks', taskData);
-  return response.data;
+  const response = await apiClient.post('/api/tasks', toTaskRequest(taskData));
+  return toTask(response.data);
 }
 
 export async function updateTask(taskId, taskData) {
-  const response = await apiClient.put(`/api/tasks/${taskId}`, taskData);
-  return response.data;
+  const response = await apiClient.put(`/api/tasks/${taskId}`, toTaskRequest(taskData));
+  return toTask(response.data);
 }
 
 export async function updateTaskStatus(taskId, status) {
   const response = await apiClient.patch(`/api/tasks/${taskId}/status`, { status });
-  return response.data;
+  return toTask(response.data);
 }
 
 export async function deleteTask(taskId) {

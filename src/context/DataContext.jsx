@@ -1,9 +1,21 @@
-import { createContext, useContext, useMemo, useState, useCallback } from 'react';
+import { createContext, useContext, useMemo, useState, useCallback, useEffect } from 'react';
 import {
   mockProjects,
   mockTasks,
   mockAIHistory,
 } from '../data/mockData';
+import {
+  createProject,
+  deleteProject,
+  getProjects,
+  createTask,
+  deleteTask,
+  getTasks,
+  updateProject as updateProjectApi,
+  updateTask as updateTaskApi,
+  updateTaskStatus as updateTaskStatusApi,
+  useMockData,
+} from '../services/api';
 
 // DataContext is the central local-state store used while VITE_USE_MOCK_DATA=true.
 // All CRUD operations update this in-memory state. When the FastAPI backend is
@@ -27,8 +39,26 @@ export function DataProvider({ children }) {
   const [tasks, setTasks] = useState(mockTasks);
   const [aiHistory, setAiHistory] = useState(mockAIHistory);
 
+  useEffect(() => {
+    if (useMockData) return;
+
+    getProjects()
+      .then(setProjects)
+      .catch(() => undefined);
+
+    getTasks()
+      .then(setTasks)
+      .catch(() => undefined);
+  }, []);
+
   // ---- Project CRUD ----
-  const addProject = useCallback((data) => {
+  const addProject = useCallback(async (data) => {
+    if (!useMockData) {
+      const savedProject = await createProject(data);
+      setProjects((prev) => [...prev, savedProject]);
+      return savedProject;
+    }
+
     const newProject = {
       id: nextId(projects),
       ...data,
@@ -38,13 +68,23 @@ export function DataProvider({ children }) {
     return newProject;
   }, [projects]);
 
-  const updateProject = useCallback((id, data) => {
+  const updateProject = useCallback(async (id, data) => {
+    if (!useMockData) {
+      const savedProject = await updateProjectApi(id, data);
+      setProjects((prev) => prev.map((project) => (project.id === id ? savedProject : project)));
+      return savedProject;
+    }
+
     setProjects((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...data } : p)),
     );
   }, []);
 
-  const removeProject = useCallback((id) => {
+  const removeProject = useCallback(async (id) => {
+    if (!useMockData) {
+      await deleteProject(id);
+    }
+
     setProjects((prev) => prev.filter((p) => p.id !== id));
     // Also remove tasks that belonged to the deleted project.
     setTasks((prev) => prev.filter((t) => t.projectId !== id));
@@ -52,6 +92,13 @@ export function DataProvider({ children }) {
 
   // ---- Task CRUD ----
   const addTask = useCallback((data) => {
+    if (!useMockData) {
+      return createTask(data).then((savedTask) => {
+        setTasks((prev) => [...prev, savedTask]);
+        return savedTask;
+      });
+    }
+
     const newTask = {
       id: nextId(tasks),
       ...data,
@@ -63,6 +110,13 @@ export function DataProvider({ children }) {
   }, [tasks]);
 
   const updateTask = useCallback((id, data) => {
+    if (!useMockData) {
+      return updateTaskApi(id, data).then((savedTask) => {
+        setTasks((prev) => prev.map((task) => (task.id === id ? savedTask : task)));
+        return savedTask;
+      });
+    }
+
     setTasks((prev) =>
       prev.map((t) =>
         t.id === id ? { ...t, ...data, updatedAt: today() } : t,
@@ -71,6 +125,13 @@ export function DataProvider({ children }) {
   }, []);
 
   const updateTaskStatus = useCallback((id, status) => {
+    if (!useMockData) {
+      return updateTaskStatusApi(id, status).then((savedTask) => {
+        setTasks((prev) => prev.map((task) => (task.id === id ? savedTask : task)));
+        return savedTask;
+      });
+    }
+
     setTasks((prev) =>
       prev.map((t) =>
         t.id === id ? { ...t, status, updatedAt: today() } : t,
@@ -79,6 +140,12 @@ export function DataProvider({ children }) {
   }, []);
 
   const removeTask = useCallback((id) => {
+    if (!useMockData) {
+      return deleteTask(id).then(() => {
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+      });
+    }
+
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }, []);
 

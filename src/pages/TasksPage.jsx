@@ -32,13 +32,13 @@ export default function TasksPage() {
     });
   }, [tasks, filters]);
 
-  function handleSaveTask(data) {
+  async function handleSaveTask(data) {
     try {
       if (editingTask) {
-        updateTask(editingTask.id, data);
+        await updateTask(editingTask.id, data);
         setSuccess('Task updated successfully.');
       } else {
-        addTask(data);
+        await addTask(data);
         setSuccess('Task created successfully.');
       }
       setFormOpen(false);
@@ -48,19 +48,19 @@ export default function TasksPage() {
     }
   }
 
-  function handleStatusChange(taskId, status) {
+  async function handleStatusChange(taskId, status) {
     try {
-      updateTaskStatus(taskId, status);
+      await updateTaskStatus(taskId, status);
       setSuccess('Task updated successfully.');
     } catch {
       setError('Task status could not be updated.');
     }
   }
 
-  function handleDeleteTask() {
+  async function handleDeleteTask() {
     if (!deletingTask) return;
     try {
-      removeTask(deletingTask.id);
+      await removeTask(deletingTask.id);
       setSuccess('Task deleted successfully.');
     } catch {
       setError('Task could not be deleted.');
